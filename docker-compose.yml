@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  child-profile-service:
+    # Build context is the directory containing this docker-compose.yml file
+    build: ./
+    ports:
+      - "5001:5000" # Map host port 5001 to the container's exposed port 5000
+    environment:
+      # Set environment variables to point to the mock service
+      - DB_INTERACT_SERVICE_HOST=mock-db-interact # Service name of the mock
+      - DB_INTERACT_SERVICE_PORT=5002
+      - DB_INTERACT_ADD_CHILD_ROUTE=/add_child
+    networks:
+      - kindergarten_network # Connect to the shared network
+    # Add dependency on mock-db-interact to ensure it starts first (optional but good practice)
+    depends_on:
+      - mock-db-interact
+
+  mock-db-interact: # Service name for the mock database interaction service
+    # Build context is relative to the location of this docker-compose.yml file
+    build: ../mock-db-interact # Go up one directory, then into mock-db-interact
+    ports:
+      - "5002:5002" # Map host port 5002 to the container's exposed port 5002
+    networks:
+      - kindergarten_network # Connect to the shared network
+    # No need for database environment variables here as it's a mock
+
+  # Add configurations for any other services in your project here
+  # Remember to adjust their build paths relative to the location of this compose file
+  # Make sure they are also connected to the kindergarten_network if they need to communicate
+
+networks:
+  kindergarten_network:
+    driver: bridge # Use the default bridge network driver
