@@ -1,35 +1,50 @@
-version: '3.8'
+# docker-compose.yml for child-profile-service
+# Assumes running alongside other services on a shared network ('app-network')
 
 services:
+  # Child Profile Service
   child-profile-service:
-    # Build context is the directory containing this docker-compose.yml file
-    build: ./
+    build: . # Build from the Dockerfile in the current directory
+    container_name: child_profile_app
     ports:
-      - "5001:5000" # Map host port 5001 to the container's exposed port 5000
+      # Map host port 5002 to the container's internal port 5000
+      # Adjust host port (5002) if needed to avoid conflicts
+      - "8083:5002"
     environment:
-      # Set environment variables to point to the mock service
-      - DB_INTERACT_SERVICE_HOST=mock-db-interact # Service name of the mock
-      - DB_INTERACT_SERVICE_PORT=5002
-      - DB_INTERACT_ADD_CHILD_ROUTE=/add_child
+      # --- Service Dependencies ---
+      # URL for the *real* DB Interact service (using service name from shared network)
+      # Ensure 'db-interact-service' is the correct service name defined in your main/combined compose file
+      # and that it exposes port 5000 internally.
+      # DB_INTERACT_SERVICE_URL: http://localhost:8082
+      DB_INTERACT_SERVICE_URL: http://db-interact-service:8082
+
+
+      # --- Flask Settings ---
+      FLASK_APP: app.py
+      FLASK_ENV: development # Change to production later
+
+    volumes:
+      # Mount local code for development hot-reloading (optional)
+      # Ensures changes in app.py are reflected without rebuilding image
+      - ./app.py:/app/app.py
+      # Mount the package directory if you revert to that structure
+      # - ./child_profile_service:/app/child_profile_service
+
     networks:
-      - kindergarten_network # Connect to the shared network
-    # Add dependency on mock-db-interact to ensure it starts first (optional but good practice)
-    depends_on:
-      - mock-db-interact
+      # Connect to the shared network used by other services
+      - app-network
+    # depends_on: # Only needed if db-interact-service is defined *in this same file*
+      # - db-interact-service
 
-  mock-db-interact: # Service name for the mock database interaction service
-    # Build context is relative to the location of this docker-compose.yml file
-    build: ../mock-db-interact # Go up one directory, then into mock-db-interact
-    ports:
-      - "5002:5002" # Map host port 5002 to the container's exposed port 5002
-    networks:
-      - kindergarten_network # Connect to the shared network
-    # No need for database environment variables here as it's a mock
-
-  # Add configurations for any other services in your project here
-  # Remember to adjust their build paths relative to the location of this compose file
-  # Make sure they are also connected to the kindergarten_network if they need to communicate
-
+# Define the shared network. It might be defined in another primary compose file.
+# If defined elsewhere, declare it as external here.
 networks:
-  kindergarten_network:
-    driver: bridge # Use the default bridge network driver
+  app-network:
+    # If this file is the main definition for the network:
+    driver: bridge
+    # If the network is defined in another docker-compose file (e.g., a root one):
+    # external: true
+
+# Volumes are typically defined in the main compose file or managed automatically.
+# No volumes needed specifically for this service unless it stores local files.
+
